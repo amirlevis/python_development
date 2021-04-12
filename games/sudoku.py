@@ -22,6 +22,8 @@ GRID_COLOR = {
 }
 
 
+ALLOWED_INPUTS = ['1','2','3','4','5','6','7','8','9']
+
 class Grid:
     def __init__(self, cells):
         #self.cells = cells
@@ -59,7 +61,7 @@ class Grid:
     def draw_cells(self):
         for row in self.grid:
             for cell in row:
-                cell.display()
+                cell.draw()
     
 
     def get_cell(self,coords):
@@ -85,18 +87,23 @@ class Grid:
 
 class Cell:
     def __init__(self, value, rect):
-        #self.coords = coords
         self.value = value
         self.rect = rect
     
 
-    def display(self):
-        cellSurf = BASICFONT.render('%s' %(self.value), True, GRID_COLOR['Square'])
+    def draw(self):
+        self.cellSurf = BASICFONT.render('%s' %(self.value), True, GRID_COLOR['Square'])
         x = self.rect.x + self.rect.width/2
         y = self.rect.y + self.rect.height/2
-        cellRect = cellSurf.get_rect(center = (x, y))
-        pygame.draw.rect(DISPLAYSURF, GRID_COLOR['Cell'], pygame.Rect(self.rect.x, self.rect.y, self.rect.width, self.rect.height), 2)
-        DISPLAYSURF.blit(cellSurf, cellRect)
+        cellRect = self.cellSurf.get_rect(center = (x, y))
+        pygame.draw.rect(DISPLAYSURF, GRID_COLOR['Cell'], self.rect, 2)
+        DISPLAYSURF.blit(self.cellSurf, cellRect)
+
+
+    def clear(self):
+        self.cellSurf = BASICFONT.render('%s' %(''), True, BOARD_COLOR)
+        DISPLAYSURF.fill(BOARD_COLOR, self.rect)
+        DISPLAYSURF.blit(self.cellSurf, self.rect)
 
 
     def in_boundries(self, pos):
@@ -113,23 +120,10 @@ class Cell:
         return f'Value: {self.value} Rect: {self.rect}'
 
 
-'''
-class CellRect:
-    def __init__(self,x ,y, width, height):
-        self.x = x
-        self.y = y
-        self.width = width
-        self.height = height
-
-    def __str__(self) -> str:
-        return f'Rect x: {self.x} y: {self.y} width: {self.width} height: {self.height}'''
-
-
 def create_cells():
     cells = []
     for x in range(1,10):
         for y in range(1,10):
-            #cell_rect = [ (y-1)*CELL_SIZE[1] + CELL_SIZE[1]//2 , (x-1)*CELL_SIZE[0] + CELL_SIZE[0]//2 ]
             i = (y-1)*CELL_SIZE[1]
             j = (x-1)*CELL_SIZE[0]
             width = CELL_SIZE[0]
@@ -138,38 +132,6 @@ def create_cells():
             cells.append(Cell((x+y - 2)%9 + 1, cell_rect))
     
     return cells
-
-
-def grid_navigation_user_input_mouse(grid, selected_cell, selected_cell_coords):
-    pos = pygame.mouse.get_pos()
-    pygame.draw.rect(DISPLAYSURF, GRID_COLOR['Cell'], selected_cell.rect, 3)
-    selected_cell, selected_cell_coords = grid.get_clicked_cell(pos)
-    if selected_cell is not None:
-        print(selected_cell.value)
-        return selected_cell, selected_cell_coords
-    else:
-        print(f"Didnt found a cell in {pos} boundries")
-
-
-def grid_navigation_user_input_keyboard(event, grid, selected_cell, selected_cell_coords):
-    if event.key == K_LEFT:
-        if selected_cell_coords[0] - 1 >=0:
-                selected_cell_coords[0] = selected_cell_coords[0] - 1
-        if event.key == K_RIGHT:
-            if selected_cell_coords[0] + 1 < 9:
-                selected_cell_coords[0] = selected_cell_coords[0] + 1
-        if event.key == K_UP:
-            if selected_cell_coords[1] - 1 >= 0:
-                selected_cell_coords[1] = selected_cell_coords[1] - 1
-        if event.key == K_DOWN:
-            if selected_cell_coords[1] + 1 < 9:
-                selected_cell_coords[1] = selected_cell_coords[1] + 1
-                        
-    pygame.draw.rect(DISPLAYSURF, GRID_COLOR['Cell'], selected_cell.rect, 3)
-    selected_cell = grid.get_cell(selected_cell_coords)
-    print(selected_cell.value)
-    return selected_cell, selected_cell_coords
-
 
 def grid_navigation(event, grid, selected_cell, selected_cell_coords):
     if event.type == MOUSEBUTTONDOWN:
@@ -204,6 +166,18 @@ def grid_navigation(event, grid, selected_cell, selected_cell_coords):
     return selected_cell, selected_cell_coords
 
 
+def cell_value_change(event, cell, allowed_input = ALLOWED_INPUTS):
+    if event.type == KEYDOWN:
+        #print(pygame.key.name(event.key))
+        key = pygame.key.name(event.key)
+        if key in allowed_input:
+            cell.value = key
+            cell.clear()
+            cell.draw()
+           
+
+
+
 def main():
 
     global FPSCLOCK, DISPLAYSURF
@@ -215,19 +189,16 @@ def main():
     DISPLAYSURF = pygame.display.set_mode((WINDOW_WIDTH,WINDOW_HEIGHT))
     DISPLAYSURF.fill(BOARD_COLOR)
 
-    selected_cell_coords = [7,8]
+    selected_cell_coords = [0,0]
 
     grid = Grid(create_cells())
     grid.draw_grid()
     grid.draw_cells()
-    #grid.draw_selected_cell(selected_cell_coords)
-
     pygame.mouse.get_pos()
 
     pygame.display.set_caption("Sudoku")
 
     selected_cell = grid.get_cell(selected_cell_coords)
-    #newrect = pygame.draw.rect(DISPLAYSURF, (255,0,0) ,  rect,3)
 
     
     while True: #main game loop
@@ -235,28 +206,9 @@ def main():
             if event.type == QUIT:
                 pygame.quit()
                 sys.exit()
-            '''
-            elif event.type == MOUSEBUTTONDOWN:
-                selected_cell, selected_cell_coords = mouse_input_handler(grid, selected_cell, selected_cell_coords)
-               
-            elif event.type == KEYDOWN:
-                if event.key == K_LEFT:
-                    if selected_cell_coords[0] - 1 >=0:
-                        selected_cell_coords[0] = selected_cell_coords[0] - 1
-                if event.key == K_RIGHT:
-                     if selected_cell_coords[0] + 1 < 9:
-                        selected_cell_coords[0] = selected_cell_coords[0] + 1
-                if event.key == K_UP:
-                     if selected_cell_coords[1] - 1 >= 0:
-                        selected_cell_coords[1] = selected_cell_coords[1] - 1
-                if event.key == K_DOWN:
-                    if selected_cell_coords[1] + 1 < 9:
-                        selected_cell_coords[1] = selected_cell_coords[1] + 1
-                        
-                pygame.draw.rect(DISPLAYSURF, GRID_COLOR['Cell'], selected_cell.rect, 3)
-                selected_cell = grid.get_cell(selected_cell_coords)
-                print(selected_cell.value)'''
+           
             selected_cell, selected_cell_coords = grid_navigation(event, grid, selected_cell, selected_cell_coords)
+            cell_value_change(event, selected_cell)
             pygame.draw.rect(DISPLAYSURF, (255,0,0), selected_cell.rect, 3)
             
             grid.draw_grid()
