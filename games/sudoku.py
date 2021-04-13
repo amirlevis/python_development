@@ -1,6 +1,6 @@
 import pygame, sys
 from pygame.locals import *
-from random import shuffle 
+from random import shuffle, randint
 
 
 WINDOW_WIDTH = 900
@@ -24,15 +24,23 @@ GRID_COLOR = {
 
 
 ALLOWED_INPUTS = [1,2,3,4,5,6,7,8,9]
-
+COUNTER = 0
 class Grid:
+
+   
+
     def __init__(self, cells):
-       
+        COUNTER = 0
+        print(len(cells))
+        self.cells = cells
         self.grid = []
         for i in range(9):
             row = []
             for j in range(9):
-                row.insert(0,cells.pop())
+                if cells is None:
+                    row.insert(0,Cell(0, None))
+                else:
+                    row.insert(0, cells.pop())
             self.grid.insert(0,row)
 
         #self.marked_cell_rect = None
@@ -59,7 +67,7 @@ class Grid:
         for row in self.grid:
             for cell in row:
                 cell.draw()
-    
+  
 
     def get_cell(self,coords):
         return self.grid[coords[1]][coords[0]]
@@ -137,7 +145,59 @@ class Grid:
                 break
         self.grid[row][col].value=0 
 
-    
+    def solve(self):
+        global COUNTER
+        for i in range(81):
+            row = int(i/9)
+            col = int(i%9)
+
+            if self.grid[row][col].value == 0:
+                for value in ALLOWED_INPUTS: 
+                    row_values = [cell.value for cell in self.grid[row]]
+                    if not(value in row_values):
+                        cell_column = [self.grid[0][col], self.grid[1][col],
+                                  self.grid[2][col], self.grid[3][col], self.grid[4][col],
+                                  self.grid[5][col], self.grid[6][col], self.grid[7][col],
+                                  self.grid[8][col]]
+                        
+                        column_values = [cell.value for cell in cell_column]
+                        if not value in column_values:
+                            square=[]
+                            if row<3:
+                                if col<3:
+                                    square=[self.grid[i][0:3] for i in range(0,3)]
+                                elif col<6:
+                                    square=[self.grid[i][3:6] for i in range(0,3)]
+                                else:  
+                                    square=[self.grid[i][6:9] for i in range(0,3)]
+                            elif row<6:
+                                if col<3:
+                                    square=[self.grid[i][0:3] for i in range(3,6)]
+                                elif col<6:
+                                    square=[self.grid[i][3:6] for i in range(3,6)]
+                                else:  
+                                    square=[self.grid[i][6:9] for i in range(3,6)]
+                            else:
+                                if col<3:
+                                    square=[self.grid[i][0:3] for i in range(6,9)]
+                                elif col<6:
+                                    square=[self.grid[i][3:6] for i in range(6,9)]
+                                else:  
+                                    square=[self.grid[i][6:9] for i in range(6,9)]
+                            
+                            if not value in ([cell.value for cell in square[0]] + [cell.value for cell in square[1]] + [cell.value for cell in square[2]]):
+                                self.grid[row][col].clear()
+                                self.grid[row][col].value=value
+                                print(COUNTER)
+                                if self.check_grid():
+                                    COUNTER+=1
+                                    break
+                                else:
+                                    if self.solve():
+                                        return True
+                break
+        self.grid[row][col].value=0 
+
 
 class Cell:
     def __init__(self, value, rect):
@@ -237,13 +297,45 @@ def generate_solved_grid():
     grid.fill_grid()
     return grid
 
+def create_game(grid):
+    
+    attempts = 60
+    COUNTER = 1
+    while attempts > 0:
+        row = randint(0,8)
+        col = randint(0,8)
+        while grid.grid[row][col].value == 0:
+            row = randint(0,8)
+            col = randint(0,8)
 
+        print(f'row: {row} col:  {col}')
+        backup = grid.grid[row][col].value
+        grid.grid[row][col].value = 0
+        
+        cells = []
+        for r in range(0,9):
+            for c in range(0,9):
+                cells.append(grid.grid[r][c])
+
+
+        copy_grid = Grid(cells)
+        
+        
+        COUNTER = 0
+        copy_grid.solve()
+        if COUNTER!=1:
+            grid.grid[row][col].value=backup
+    #We could stop here, but we can also have another attempt with a different cell just to try to remove more numbers
+            attempts -= 1
+    return grid
+        
 
 
 def main():
 
     global FPSCLOCK, DISPLAYSURF
     global BASICFONT, BASICFONTSIZE
+    
     BASICFONTSIZE = 25
     pygame.font.init()
     BASICFONT = pygame.font.Font('freesansbold.ttf', BASICFONTSIZE)
@@ -253,10 +345,9 @@ def main():
 
     selected_cell_coords = [0,0]
 
-    
     grid = generate_solved_grid()
-    
-    
+    grid = create_game(grid)
+    print('done')
 
     pygame.display.set_caption("Sudoku")
 
