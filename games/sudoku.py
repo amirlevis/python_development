@@ -1,5 +1,6 @@
 import pygame, sys
 from pygame.locals import *
+from random import shuffle 
 
 
 WINDOW_WIDTH = 900
@@ -22,12 +23,11 @@ GRID_COLOR = {
 }
 
 
-ALLOWED_INPUTS = ['1','2','3','4','5','6','7','8','9']
+ALLOWED_INPUTS = [1,2,3,4,5,6,7,8,9]
 
 class Grid:
     def __init__(self, cells):
-        #self.cells = cells
-
+       
         self.grid = []
         for i in range(9):
             row = []
@@ -35,19 +35,16 @@ class Grid:
                 row.insert(0,cells.pop())
             self.grid.insert(0,row)
 
-        self.marked_cell_rect = None
-        print(self.grid)
-        #print(self.grid)
-
+        #self.marked_cell_rect = None
        
-    def draw_grid(self):
+    def draw_cell_grid(self):
 
-        '''
+        
         for x in range(0, WINDOW_WIDTH, CELL_SIZE[0]): # draw vertical lines
             pygame.draw.line(DISPLAYSURF, GRID_COLOR['Cell'], (x,0),(x,WINDOW_HEIGHT))
         
         for y in range (0, WINDOW_HEIGHT, CELL_SIZE[1]): # draw horizontal lines
-            pygame.draw.line(DISPLAYSURF, GRID_COLOR['Cell'], (0,y), (WINDOW_WIDTH, y))'''
+            pygame.draw.line(DISPLAYSURF, GRID_COLOR['Cell'], (0,y), (WINDOW_WIDTH, y))
         
 
         ### Draw Major Lines
@@ -79,11 +76,68 @@ class Grid:
 
         return None
 
-    def shuffle(self):
-        pass
+    
+    def check_grid(self):
+        for row in range(0,9):
+            for col in range(0,9):
+                if self.grid[row][col].value==0:
+                    return False
 
-    def __repr__(self) -> str:
-        return ('\n'.join(['|'.join([str(cell) for cell in row]) for row in self.grid]))
+        return True 
+
+    def fill_grid(self):
+        for i in range(81):
+            row = int(i/9)
+            col = int(i%9)
+
+            if self.grid[row][col].value == 0:
+                shuffle(ALLOWED_INPUTS)
+                for value in ALLOWED_INPUTS: 
+                    row_values = [cell.value for cell in self.grid[row]]
+                    if not(value in row_values):
+                        cell_column = [self.grid[0][col], self.grid[1][col],
+                                  self.grid[2][col], self.grid[3][col], self.grid[4][col],
+                                  self.grid[5][col], self.grid[6][col], self.grid[7][col],
+                                  self.grid[8][col]]
+                        
+                        column_values = [cell.value for cell in cell_column]
+                        if not value in column_values:
+                            square=[]
+                            if row<3:
+                                if col<3:
+                                    square=[self.grid[i][0:3] for i in range(0,3)]
+                                elif col<6:
+                                    square=[self.grid[i][3:6] for i in range(0,3)]
+                                else:  
+                                    square=[self.grid[i][6:9] for i in range(0,3)]
+                            elif row<6:
+                                if col<3:
+                                    square=[self.grid[i][0:3] for i in range(3,6)]
+                                elif col<6:
+                                    square=[self.grid[i][3:6] for i in range(3,6)]
+                                else:  
+                                    square=[self.grid[i][6:9] for i in range(3,6)]
+                            else:
+                                if col<3:
+                                    square=[self.grid[i][0:3] for i in range(6,9)]
+                                elif col<6:
+                                    square=[self.grid[i][3:6] for i in range(6,9)]
+                                else:  
+                                    square=[self.grid[i][6:9] for i in range(6,9)]
+                            
+                            if not value in ([cell.value for cell in square[0]] + [cell.value for cell in square[1]] + [cell.value for cell in square[2]]):
+                                self.grid[row][col].clear()
+                                self.grid[row][col].value=value
+                                self.grid[row][col].draw()
+                                if self.check_grid():
+                                    return True
+                                else:
+                                    if self.fill_grid():
+                                        return True
+                break
+        self.grid[row][col].value=0 
+
+    
 
 class Cell:
     def __init__(self, value, rect):
@@ -129,7 +183,7 @@ def create_cells():
             width = CELL_SIZE[0]
             height = CELL_SIZE[1]
             cell_rect = pygame.Rect(i,j,width,height)
-            cells.append(Cell((x+y - 2)%9 + 1, cell_rect))
+            cells.append(Cell(0, cell_rect))
     
     return cells
 
@@ -168,13 +222,21 @@ def grid_navigation(event, grid, selected_cell, selected_cell_coords):
 
 def cell_value_change(event, cell, allowed_input = ALLOWED_INPUTS):
     if event.type == KEYDOWN:
-        #print(pygame.key.name(event.key))
         key = pygame.key.name(event.key)
         if key in allowed_input:
             cell.value = key
             cell.clear()
             cell.draw()
            
+
+
+def generate_solved_grid():
+
+    grid = Grid(create_cells())
+    grid.draw_cell_grid()
+    grid.fill_grid()
+    return grid
+
 
 
 
@@ -191,10 +253,10 @@ def main():
 
     selected_cell_coords = [0,0]
 
-    grid = Grid(create_cells())
-    grid.draw_grid()
-    grid.draw_cells()
-    pygame.mouse.get_pos()
+    
+    grid = generate_solved_grid()
+    
+    
 
     pygame.display.set_caption("Sudoku")
 
@@ -211,7 +273,7 @@ def main():
             cell_value_change(event, selected_cell)
             pygame.draw.rect(DISPLAYSURF, (255,0,0), selected_cell.rect, 3)
             
-            grid.draw_grid()
+            grid.draw_cell_grid()
                 
 
         
